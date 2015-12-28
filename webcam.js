@@ -17,6 +17,7 @@ var Webcam = {
 	loaded: false,   // true when webcam movie finishes loading
 	live: false,     // true when webcam is initialized and ready to snap
 	userMedia: true, // true when getUserMedia is supported natively
+	upload_by_flash: true, // true when browser can't upload image by ajax
 	
 	params: {
 		width: 0,
@@ -26,6 +27,7 @@ var Webcam = {
 		image_format: 'jpeg',  // image format (may be jpeg or png)
 		jpeg_quality: 90,      // jpeg image quality from 0 (worst) to 100 (best)
 		force_flash: false,    // force flash mode,
+		force_flash_upload: false,  // force flash upload mode,
 		flip_horiz: false,     // flip image horiz (mirror mode)
 		fps: 30,               // camera frames per second
 		upload_name: 'webcam', // name of file in upload post data
@@ -52,6 +54,7 @@ var Webcam = {
 		
 		window.URL = window.URL || window.webkitURL || window.mozURL || window.msURL;
 		this.userMedia = this.userMedia && !!this.mediaDevices && !!window.URL;
+		this.upload_by_flash = navigator.appVersion.indexOf("MSIE 9")!=-1;
 		
 		// Older versions of firefox (< 21) apparently claim support but user media does not actually work
 		if (navigator.userAgent.match(/Firefox\D+(\d+)/)) {
@@ -93,6 +96,7 @@ var Webcam = {
 		
 		// if force_flash is set, disable userMedia
 		if (this.params.force_flash) this.userMedia = null;
+		if (this.params.force_flash_upload) this.upload_by_flash = true;
 		
 		// check for default fps
 		if (typeof this.params.fps !== "number") this.params.fps = 30;
@@ -655,6 +659,22 @@ var Webcam = {
 		return taBytes;
 	},
 	
+	_flash_upload_user_callback: null,
+	_flash_upload_success: function(http_status, data){
+		var self = this;
+		setTimeout(function(){ // release flash thread
+			var callback = self._flash_upload_user_callback;
+			if (callback) callback.apply( self, [http_status, data, ""] );
+			Webcam.dispatch('uploadComplete', http_status, data, "");
+			self._flash_upload_user_callback = null;
+		},0);
+	},
+  
+	_flash_upload_failure: function(message){
+		 console.error("webcamjs: error uploading by flash: " + message);
+	},
+ 
+
 	upload: function(image_data_uri, target_url, callback) {
 		// submit image data to server using binary AJAX
 		var form_elem_name = this.params.upload_name || 'webcam';
@@ -668,6 +688,12 @@ var Webcam = {
 		
 		// extract raw base64 data from Data URI
 		var raw_image_data = image_data_uri.replace(/^data\:image\/\w+\;base64\,/, '');
+
+		if (!this.userMedia && this.upload_by_flash){
+			this._flash_upload_user_callback = callback;
+			this.getMovie()._upload(target_url, form_elem_name, raw_image_data);
+			return;
+		}
 		
 		// contruct use AJAX object
 		var http = new XMLHttpRequest();

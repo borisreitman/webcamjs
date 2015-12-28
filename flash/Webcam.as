@@ -23,10 +23,13 @@
 	import flash.media.Sound;
 	import flash.media.SoundChannel;
 	import flash.geom.Matrix;
+	import flash.net.URLLoader;
 	import mx2.utils.Base64Encoder;
+	import mx2.utils.Base64Decoder;
 	import com.adobe.images.BitString;
 	import com.adobe.images.PNGEncoder;
 	import com.adobe.images.JPGEncoder;
+	import com.jonas.net.Multipart;
 
 	public class Webcam extends Sprite {
 		private var video:Video;
@@ -97,6 +100,7 @@
 				
 				ExternalInterface.addCallback('_snap', snap);
 				ExternalInterface.addCallback('_configure', configure);
+				ExternalInterface.addCallback('_upload', upload);
 								
 				ExternalInterface.call('Webcam.flashNotify', 'flashLoadComplete', true);
 			}
@@ -174,6 +178,35 @@
 			trace("b64 string length: " + bstr.length);
 			
 			return bstr;
+		}
+
+		public function upload(url:String, form_elem_name:String, b64_encoded_image:String):void {
+			var decoder:Base64Decoder = new Base64Decoder();
+			decoder.decode(b64_encoded_image);
+			var bytes:ByteArray = decoder.toByteArray();
+			var form:Multipart = new Multipart(url);
+			form.addFile(form_elem_name, bytes, "image/"+image_format, "image."+image_format); // FIXME: what should be the filename?
+
+			var http_status:Number = 0;
+			function handle_status( e:HTTPStatusEvent ):void {
+				http_status = e.status;
+			}
+			function handle_failure( e:* ):void {
+				ExternalInterface.call('Webcam._flash_upload_failure', e.toString());
+			}
+			function handle_success(e:Event):void {
+				ExternalInterface.call('Webcam._flash_upload_success', http_status, e.target.data);
+			}
+			var urlLoader:URLLoader = new URLLoader();
+			urlLoader.addEventListener(HTTPStatusEvent.HTTP_STATUS,       handle_status, false, 0, true);
+			urlLoader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, handle_failure, false, 0, true);
+			urlLoader.addEventListener(IOErrorEvent.IO_ERROR,             handle_failure, false, 0, true);
+			urlLoader.addEventListener(Event.COMPLETE,                    handle_success, false, 0, true);
+			try {
+				urlLoader.load(form.request);
+			} catch (e:Error) {
+				handle_failure(e);
+			}
 		}
 	}
 }
