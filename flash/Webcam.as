@@ -23,7 +23,7 @@
 	import flash.media.Sound;
 	import flash.media.SoundChannel;
 	import flash.geom.Matrix;
-	import mx.utils.Base64Encoder;
+	import mx2.utils.Base64Encoder;
 	import com.adobe.images.BitString;
 	import com.adobe.images.PNGEncoder;
 	import com.adobe.images.JPGEncoder;
