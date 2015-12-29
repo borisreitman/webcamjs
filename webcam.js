@@ -349,12 +349,6 @@ var Webcam = {
 			else this.swfURL = 'webcam.swf';
 		}
 		
-		// if this is the user's first visit, set flashvar so flash privacy settings panel is shown first
-		if (window.localStorage && !localStorage.getItem('visited')) {
-			this.params.new_user = 1;
-			localStorage.setItem('visited', 1);
-		}
-		
 		// construct flashvars string
 		var flashvars = '';
 		for (var key in this.params) {
