@@ -100,7 +100,6 @@
 				
 				ExternalInterface.addCallback('_snap', snap);
 				ExternalInterface.addCallback('_configure', configure);
-				ExternalInterface.addCallback('_releaseCamera', releaseCamera);
 				ExternalInterface.addCallback('_upload', upload);
 								
 				ExternalInterface.call('Webcam.flashNotify', 'flashLoadComplete', true);
@@ -208,16 +207,6 @@
 			} catch (e:Error) {
 				handle_failure(e);
 			}
-		}
-
-		public function releaseCamera() {
-
-			trace("in releaseCamera(), turn off camera");
-			video.attachCamera(null);
-			video.clear();
-			camera = null;
-			removeChild(video);
-
 		}
 	}
 }
